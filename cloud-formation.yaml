@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for Term Assignment
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::term-assignment-key
+    Description: EC2 Key Pair to enable SSH access
+
+Resources:
+
+  # Security Group
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP, HTTPS, and SSH traffic
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  # EC2 Instance
+  WebInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.small
+      ImageId: ami-0c55b159cbfafe1f0  # Amazon Linux 2 AMI
+      SecurityGroups:
+        - Ref: EC2SecurityGroup
+      KeyName: !Ref KeyName
+
+  # S3 Bucket
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "csci5411-b00957180-bucket-${AWS::Region}-${AWS::AccountId}"
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      PoolName: term-assignment-pool
+
+  # DynamoDB Table
+  ImageInfoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ImageInfo
+      AttributeDefinitions:
+        - AttributeName: path
+          AttributeType: S
+      KeySchema:
+        - AttributeName: path
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  InstanceId:
+    Description: "Instance ID"
+    Value: !Ref WebInstance
+
+  BucketName:
+    Description: "S3 Bucket Name"
+    Value: !Ref MyS3Bucket
+
+  UserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref UserPool
+
+  DynamoDBTableName:
+    Description: "DynamoDB Table Name"
+    Value: !Ref ImageInfoTable
